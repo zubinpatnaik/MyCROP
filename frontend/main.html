@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MYCROP</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js for the graph -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- D3.js for CSV parsing -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="global.css" />
+</head>
+<body class="bg-gray-900 text-gray-200 font-[Poppins]">
+    <div class="flex h-screen">
+        <main class="flex-1 p-6 md:p-8 overflow-y-auto">
+            <!-- Header -->
+            <header class="sticky top-0 z-20 backdrop-blur supports-[backdrop-filter]:bg-gray-900/60 bg-gray-900/80 relative pb-4 pt-4 px-4 -mx-4 md:-mx-8 border-b border-white/10">
+                <div class="w-full flex items-center justify-between">
+                    <div class="flex items-center space-x-4 flex-1">
+                        <div class="w-full">
+                            <h1 id="welcome-header" class="text-xl font-bold text-white">WAKANDA FOREVER</h1>
+                            <p id="header-subtitle" class="text-xs text-gray-400">Loading Crop Data...</p>
+                        </div>
+                    </div>
+                    <nav class="flex items-center space-x-2 md:space-x-4">
+                        <a href="main.html" class="text-sm font-semibold text-white px-3 py-2 rounded-lg bg-white/10">Dashboard</a>
+                        <a href="my-crops.html" class="text-sm font-medium text-gray-200 hover:text-white px-3 py-2 rounded-lg hover:bg-white/5 transition">My Crops</a>
+                        <a href="crops.html" class="text-sm font-medium text-gray-200 hover:text-white px-3 py-2 rounded-lg hover:bg-white/5 transition">Crop Prices</a>
+                    </nav>
+                </div>
+                <!-- Ticker -->
+                <div class="w-full mt-2">
+                    <div id="crop-ticker-wrap" class="relative overflow-hidden h-10 w-full">
+                        <div class="pointer-events-none absolute left-0 top-0 h-full w-12 bg-gradient-to-r from-gray-900/80 to-transparent z-10"></div>
+                        <div class="pointer-events-none absolute right-0 top-0 h-full w-12 bg-gradient-to-l from-gray-900/80 to-transparent z-10"></div>
+                        <div id="crop-ticker" class="absolute top-0 left-0 whitespace-nowrap will-change-transform"></div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Dashboard Grid -->
+            <div class="grid grid-cols-1 xl:grid-cols-3 gap-8 mt-8">
+                <!-- Column 1: Farmer + Field Health -->
+                <div class="space-y-8">
+                    <div class="bg-gray-800/50 p-6 rounded-2xl border border-white/10 hover:border-green-500/40 transition">
+                        <h3 class="text-lg font-bold text-white mb-4">Crop Field Health</h3>
+                        <div class="flex items-center space-x-4 mb-4">
+                            <img id="farmer-pfp" src="" alt="Farmer" class="w-12 h-12 rounded-full border-2 border-gray-600 object-cover" />
+                            <div>
+                                <p id="farmer-name" class="font-semibold text-white">Loading...</p>
+                                <p id="farmer-id" class="text-xs text-gray-400">ID: Loading...</p>
+                            </div>
+                        </div>
+                        <div class="mb-4">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-sm font-medium text-gray-300">Overall Health</span>
+                                <span id="health-status-text" class="text-sm font-semibold text-white">--</span>
+                            </div>
+                            <div class="w-full h-2.5 bg-gray-700 rounded-full overflow-hidden">
+                                <div id="health-bar" class="h-2.5 w-0 bg-green-400 transition-all duration-700"></div>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4 text-xs mt-4">
+                            <div>
+                                <p class="text-gray-400">Field Address</p>
+                                <p id="field-address" class="font-medium text-gray-300">--</p>
+                            </div>
+                            <div>
+                                <p class="text-gray-400">Field Size</p>
+                                <p id="field-size" class="font-medium text-gray-300">--</p>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Optional File Upload -->
+                    <div class="bg-gray-800/50 p-6 rounded-2xl border border-white/10">
+                        <h3 class="text-lg font-bold text-white mb-4">Upload Field Image</h3>
+                        <input id="file-upload" type="file" accept="image/*" class="block w-full text-sm text-gray-300 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-green-500/20 file:text-green-300 hover:file:bg-green-500/30 cursor-pointer" />
+                        <p class="text-xs text-gray-400 mt-2">(This demo just logs the filename)</p>
+                    </div>
+                </div>
+
+                <!-- Column 2: Weather -->
+                <div class="space-y-8">
+                    <div class="bg-gray-800/50 p-6 rounded-2xl border border-white/10 hover:border-green-500/40 transition">
+                        <h3 class="text-lg font-bold text-white mb-4">Local Weather</h3>
+                        <div class="flex items-center justify-between mb-4">
+                            <div>
+                                <p id="location" class="text-xl font-semibold text-white">--</p>
+                                <p id="temperature" class="text-4xl font-bold text-green-400 mt-1">--°C</p>
+                            </div>
+                            <div id="weather" class="text-sm text-gray-300"></div>
+                        </div>
+                        <div class="space-y-2" id="forecast">
+                            <!-- forecast items injected -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Column 3: Chart -->
+                <div class="space-y-8 xl:col-span-1">
+                    <div class="bg-gray-800/50 p-6 rounded-2xl border border-white/10 hover:border-green-500/40 transition h-[420px] flex flex-col">
+                        <div class="flex items-center justify-between mb-2">
+                            <h3 class="text-lg font-bold text-white">Price Trends (Last Year)</h3>
+                        </div>
+                        <div class="flex-1 relative">
+                            <canvas id="lastYearChart" class="absolute inset-0"></canvas>
+                        </div>
+                        <p class="text-[10px] text-gray-500 mt-3">Data from CSV or fallback sample. Prices in ₹ per Quintal.</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Single authoritative script include -->
+    <script src="main.js"></script>
+</body>
+</html>
+
+
