@@ -10,6 +10,9 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- D3.js for CSV parsing -->
     <script src="https://d3js.org/d3.v7.min.js"></script>
+    <!-- SheetJS for Excel parsing -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="excel-loader.js"></script>
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -22,10 +25,14 @@
             <!-- Header -->
             <header class="sticky top-0 z-20 backdrop-blur supports-[backdrop-filter]:bg-gray-900/60 bg-gray-900/80 relative pb-4 pt-4 px-4 -mx-4 md:-mx-8 border-b border-white/10">
                 <div class="w-full flex items-center justify-between">
-                    <div class="flex items-center space-x-4 flex-1">
+                        <div class="flex items-center space-x-4 flex-1">
                         <div class="w-full">
                             <h1 id="welcome-header" class="text-xl font-bold text-white">WAKANDA FOREVER</h1>
                             <p id="header-subtitle" class="text-xs text-gray-400">Loading Crop Data...</p>
+                                <div id="city-filter-wrap" class="mt-2 hidden">
+                                    <label class="text-[10px] uppercase tracking-wide text-gray-400 mr-2" for="city-filter">City:</label>
+                                    <select id="city-filter" class="bg-gray-800/70 border border-white/10 text-xs rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-green-400 text-gray-200"></select>
+                                </div>
                         </div>
                     </div>
                     <nav class="flex items-center space-x-2 md:space-x-4">

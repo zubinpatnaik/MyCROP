@@ -195,14 +195,86 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch (e) { console.warn('Ticker build failed', e); }
         }
 
-        if (typeof d3 !== 'undefined') {
-            d3.csv('crops.csv').then(raw => {
-                if (raw && raw.length) {
-                    const data = raw.map(d => ({ Crop:d.Crop, Date:new Date(d.Date), Price:+d.Price }));
-                    processData(data);
+        // New: Try Excel first if loader present
+        const cityFilterWrap = document.getElementById('city-filter-wrap');
+        const cityFilter = document.getElementById('city-filter');
+
+        function populateCityFilter(cities, onChange){
+            if(!cities.length){ cityFilterWrap.classList.add('hidden'); return; }
+              const stored = localStorage.getItem('selectedCity') || '__ALL__';
+              cityFilter.innerHTML = '<option value="__ALL__">All Cities (avg)</option>' + cities.map(c=>`<option value="${c}">${c}</option>`).join('');
+            cityFilterWrap.classList.remove('hidden');
+              if([...cityFilter.options].some(o=>o.value===stored)) cityFilter.value = stored;
+              cityFilter.addEventListener('change', (e)=>{ localStorage.setItem('selectedCity', e.target.value); onChange(); });
+        }
+
+        async function tryExcel(){
+            if(!(window.ExcelDataLoader && typeof window.ExcelDataLoader.loadExcel === 'function')) throw new Error('Excel loader missing');
+            const { rows, cities } = await window.ExcelDataLoader.loadExcel();
+            if(!rows.length) throw new Error('No rows from Excel');
+            // Keep original rows for filtering
+            window._excelCropRows = rows;
+            populateCityFilter(cities, () => rebuildFromExcel(chart));
+            rebuildFromExcel(chart);
+        }
+
+        function rebuildFromExcel(chart){
+            const rows = window._excelCropRows || [];
+            if(!rows.length){ return; }
+            const cityFilter = document.getElementById('city-filter');
+            const chosen = cityFilter ? cityFilter.value : '__ALL__';
+            let filtered;
+            if(chosen && chosen !== '__ALL__') {
+                filtered = rows.filter(r => r.City === chosen);
+            } else if(chosen === '__ALL__') {
+                // Average across cities per Crop+Date
+                const map = new Map();
+                for(const r of rows){
+                    const key = r.Crop + '|' + r.Date.toISOString().slice(0,10);
+                    if(!map.has(key)) map.set(key, { Crop:r.Crop, Date:r.Date, sum:r.Price, count:1 });
+                    else { const m = map.get(key); m.sum += r.Price; m.count += 1; }
+                }
+                filtered = Array.from(map.values()).map(v => ({ Crop:v.Crop, Date:v.Date, Price: v.sum / v.count }));
+            } else { filtered = rows; }
+            // Normalize shape for processData
+            const data = filtered.map(r => ({ Crop:r.Crop, Date:new Date(r.Date), Price:+r.Price }));
+            processData(data);
+        }
+
+        try {
+            tryExcel().catch(excelErr => {
+                console.info('Excel load failed, falling back to CSV:', excelErr.message);
+                // Fallback to CSV
+                if (typeof d3 !== 'undefined') {
+                    d3.csv('crops.csv').then(raw => {
+                        if (raw && raw.length) {
+                            // Detect optional City column for filtering
+                            const hasCityCol = Object.keys(raw[0]).some(k => k.toLowerCase() === 'city');
+                            if (hasCityCol) {
+                                const mapped = raw.map(d => ({
+                                    Crop: d.Crop,
+                                    Date: new Date(d.Date),
+                                    Price: +d.Price,
+                                    City: d.City || d.city || null
+                                }));
+                                const cities = [...new Set(mapped.map(r => r.City).filter(Boolean))].sort();
+                                if (cities.length) {
+                                    window._excelCropRows = mapped; // reuse same storage & rebuild logic
+                                    populateCityFilter(cities, () => rebuildFromExcel(chart));
+                                    rebuildFromExcel(chart);
+                                } else {
+                                    const data = mapped.map(r => ({ Crop:r.Crop, Date:r.Date, Price:r.Price }));
+                                    processData(data);
+                                }
+                            } else {
+                                const data = raw.map(d => ({ Crop:d.Crop, Date:new Date(d.Date), Price:+d.Price }));
+                                processData(data);
+                            }
+                        } else { processData(fallbackData); }
+                    }).catch(err => { console.warn('CSV load failed, using fallback', err); processData(fallbackData); });
                 } else { processData(fallbackData); }
-            }).catch(err => { console.warn('CSV load failed, using fallback', err); processData(fallbackData); });
-        } else { processData(fallbackData); }
+            });
+        } catch(e){ processData(fallbackData); }
     }
 
     // Initialize chart after slight delay
