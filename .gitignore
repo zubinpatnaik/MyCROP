@@ -1,2 +1,4 @@
 venv
 check.py
+dataset
+__pycache__
