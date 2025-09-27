@@ -1,0 +1,166 @@
+body {
+    background-color: #0D1117;
+    color: #C9D1D9;
+    font-family: 'Inter', sans-serif;
+    margin: 0;
+    padding: 40px;
+}
+
+.container {
+    display: flex;
+    flex-direction: column;
+}
+
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+}
+
+.logo-icon {
+    width: 40px;
+    height: 40px;
+    background-color: #2ECC71;
+    border-radius: 8px;
+    margin-right: 15px;
+}
+
+.logo-text h1 {
+    margin: 0;
+    font-size: 1.5em;
+    font-weight: 700;
+    color: #FFFFFF;
+}
+
+.logo-text p {
+    margin: 0;
+    color: #8B949E;
+}
+
+.user-menu {
+    display: flex;
+    align-items: center;
+    gap: 25px;
+}
+
+.user-menu a {
+    color: #C9D1D9;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.user-menu .avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+}
+
+.upload-icon, .read-more-arrow {
+    display: inline-block;
+}
+
+main {
+    display: flex;
+    gap: 30px;
+}
+
+aside {
+    display: flex;
+    flex-direction: column;
+    width: 350px;
+}
+
+.cards {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.card {
+    background-color: #161B22;
+    border: 1px solid #30363D;
+    border-radius: 10px;
+    padding: 20px;
+}
+
+.card.empty {
+    background-color: #161B22;
+    height: 100px; /* Adjust as needed */
+}
+
+.card-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 1.1em;
+    font-weight: 500;
+}
+
+.card-content span:first-child {
+    color: #FFFFFF;
+}
+
+.card-content .rice {
+    color: #E95757;
+}
+
+.card-content span:nth-child(2) {
+    font-weight: 700;
+    color: #FFFFFF;
+}
+
+.arrow {
+    font-weight: bold;
+}
+
+.arrow.up {
+    color: #2ECC71;
+}
+
+.arrow.down {
+    color: #E95757;
+}
+
+.arrow.neutral {
+    color: #8B949E;
+}
+
+.chart-container {
+    background-color: #161B22;
+    border: 1px solid #30363D;
+    border-radius: 10px;
+    padding: 25px;
+    flex-grow: 1;
+}
+
+.chart-container h2 {
+    margin-top: 0;
+    margin-bottom: 20px;
+    color: #FFFFFF;
+    font-size: 1.5em;
+}
+
+#weather-card {
+    background-color: #161B22;
+}
+
+#weather-content {
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+#weather-content span {
+    color: #C9D1D9 !important;
+}
+
+#temperature {
+    font-size: 2em;
+    font-weight: bold;
+}
+

@@ -1,0 +1,12 @@
+// test-chart.js - dev chart test page
+
+document.addEventListener('DOMContentLoaded', () => {
+    const ctx = document.getElementById('testChart').getContext('2d');
+    const sampleData = { labels:['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'], datasets:[
+        { label:'Wheat', data:[21.50,22.10,21.80,22.50,22.30,22.90,22.60,23.20,23.00,23.80,23.50,24.00], borderColor:'#34d399', backgroundColor:'#34d39920', tension:0.2, pointRadius:3, fill:false, borderWidth:2 },
+        { label:'Rice', data:[34.00,34.80,34.20,35.00,34.50,35.50,35.00,36.00,35.80,36.50,36.20,37.00], borderColor:'#818cf8', backgroundColor:'#818cf820', tension:0.2, pointRadius:3, fill:false, borderWidth:2 },
+        { label:'Potato', data:[17.00,17.80,17.20,18.50,18.00,19.00,18.50,19.80,19.20,20.50,20.00,21.00], borderColor:'#a78bfa', backgroundColor:'#a78bfa20', tension:0.2, pointRadius:3, fill:false, borderWidth:2 }
+    ]};
+    const chartOptions = { responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:true, position:'top', labels:{ color:'#9ca3af' } } }, scales:{ y:{ beginAtZero:false, grid:{ color:'rgba(107,114,128,0.3)' }, ticks:{ color:'#9ca3af' }, title:{ display:true, text:'Price (₹)', color:'#9ca3af' } }, x:{ grid:{ display:false }, ticks:{ color:'#9ca3af' } } } };
+    new Chart(ctx, { type:'line', data: sampleData, options: chartOptions });
+});
