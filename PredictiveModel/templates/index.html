@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Crop Price Prediction</title>
+  </head>
+  <body>
+    <h2>Enter Crop Details</h2>
+    <input type="text" id="cropName" placeholder="Enter Crop Name" />
+    <input type="text" id="cityName" placeholder="Enter City Name" />
+    <button onclick="predictPrice()">Predict Price</button>
+
+    <h3>Prediction Result:</h3>
+    <p id="result"></p>
+
+    <script>
+      function predictPrice() {
+        let cropName = document.getElementById("cropName").value;
+        let cityName = document.getElementById("cityName").value;
+
+        fetch("/predict", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            crop_name: cropName,
+            city_name: cityName,
+          }),
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            if (data.error) {
+              document.getElementById("result").innerText =
+                "Error: " + data.error;
+            } else {
+              document.getElementById("result").innerText =
+                "Predicted Price: " + data.predicted_price;
+            }
+          })
+          .catch((error) => console.error("Error:", error));
+      }
+    </script>
+  </body>
+</html>
