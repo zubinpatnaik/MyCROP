@@ -7,34 +7,78 @@ document.addEventListener('DOMContentLoaded', () => {
     const weatherElement = document.getElementById('weather');
     const forecastElement = document.getElementById('forecast');
 
-    const indianStates = ['Mumbai', 'Delhi', 'Bangalore', 'Kolkata', 'Chennai', 'Hyderabad', 'Pune', 'Ahmedabad', 'Jaipur', 'Lucknow'];
+    const indianCities = ['Mumbai','Delhi','Bangalore','Kolkata','Chennai','Hyderabad','Pune','Ahmedabad','Jaipur','Lucknow'];
+
+    // Monthly average temperatures (°C) rough approximations (Jan..Dec)
+    const monthlyAverages = {
+        Mumbai:     [24,25,27,29,30,29,28,28,28,28,27,25],
+        Delhi:      [14,16,22,28,33,34,31,30,29,24,19,15],
+        Bangalore:  [21,23,25,27,27,25,24,24,24,23,22,21],
+        Kolkata:    [18,20,26,29,31,30,29,29,29,27,23,19],
+        Chennai:    [25,26,28,30,33,32,31,31,30,29,27,25],
+        Hyderabad:  [20,22,26,29,32,30,28,28,28,26,23,20],
+        Pune:       [18,20,24,27,30,27,25,24,24,23,20,18],
+        Ahmedabad:  [20,22,27,32,35,34,32,31,31,29,24,21],
+        Jaipur:     [15,18,24,30,34,34,32,31,30,27,21,16],
+        Lucknow:    [14,16,22,28,33,33,31,30,29,26,20,15]
+    };
+
     const weatherConditions = {
         'Sunny': '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6 text-yellow-400"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>',
         'Partly Cloudy': '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6 text-gray-400"><path d="M12 22a7 7 0 0 0 4.9-2.1L12 15l-4.9 4.9A7 7 0 0 0 12 22z"/><path d="M17.2 15.2a4.6 4.6 0 0 0-3.5-3.5C14.5 11.2 16 9.2 16 7a5 5 0 0 0-10 0c0 2.2 1.5 4.2 2.3 4.7a4.6 4.6 0 0 0-3.5 3.5H1v1h22v-1h-5.8z"/></svg>',
         'Cloudy': '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6 text-gray-500"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></svg>',
-        'Rainy': '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6 text-blue-400"><path d="M16 13v8"/><path d="M12 13v8"/><path d="M8 13v8"/><path d="M20 17.5a2.5 2.5 0 0 0-2.24-2.45c0-2.5-1.82-4.55-4.26-4.55-2.31 0-4.11 1.84-4.25 4.23A2.5 2.5 0 0 0 4 17.5Z"/></svg>',
-        'Chance of Storms': '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6 text-purple-400"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/><path d="m10.72 11.5-3.22 6.5 6-3-3.22-6.5-2.56 3Z"/></svg>'
+        'Rain Showers': '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6 text-blue-400"><path d="M16 13v6"/><path d="M12 13v8"/><path d="M8 13v5"/><path d="M20 17.5a2.5 2.5 0 0 0-2.24-2.45c0-2.5-1.82-4.55-4.26-4.55-2.31 0-4.11 1.84-4.25 4.23A2.5 2.5 0 0 0 4 17.5Z"/></svg>',
+        'Thunderstorms': '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6 text-purple-400"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/><path d="m10.72 11.5-3.22 6.5 6-3-3.22-6.5-2.56 3Z"/></svg>'
     };
-    const weatherKeys = Object.keys(weatherConditions);
 
-    const randomCity = indianStates[Math.floor(Math.random() * indianStates.length)];
-    const randomTemp = Math.floor(Math.random() * 25) + 5;
-    const randomWeatherKey = weatherKeys[Math.floor(Math.random() * weatherKeys.length)];
-    locationElement.textContent = randomCity;
-    temperatureElement.textContent = `${randomTemp}°C`;
-    weatherElement.innerHTML = `${weatherConditions[randomWeatherKey]} <span class="ml-2">${randomWeatherKey}</span>`;
-    weatherElement.classList.add('flex', 'items-center');
-
-    forecastElement.innerHTML = '';
-    for (let i = 1; i <= 3; i++) {
-        const day = new Date();
-        day.setDate(day.getDate() + i);
-        const dayName = day.toLocaleDateString('en-US', { weekday: 'short' });
-        const futureWeatherKey = weatherKeys[Math.floor(Math.random() * weatherKeys.length)];
-        const futureTemp = randomTemp - Math.floor(Math.random() * 5) + 2;
-        const forecastItem = `\n            <div class="flex items-center justify-between text-sm">\n                <span class="text-gray-400">${dayName}</span>\n                ${weatherConditions[futureWeatherKey]}\n                <span class="font-medium text-white">${futureTemp}°C</span>\n            </div>\n        `;
-        forecastElement.insertAdjacentHTML('beforeend', forecastItem);
+    function getRealisticTemperature(city, date){
+        const month = date.getMonth(); // 0-11
+        const baseSeries = monthlyAverages[city] || monthlyAverages['Delhi'];
+        const base = baseSeries[month];
+        // Diurnal + random variance (±2.5°C approx)
+        const variance = (Math.random()*5 - 2.5);
+        // Slight warming in late afternoon (simulate 2-4 PM range)
+        const hour = date.getHours();
+        const diurnal = (hour >= 14 && hour <= 16) ? 1.5 : (hour < 7 ? -1 : 0);
+        return Math.round((base + variance + diurnal) * 10)/10;
     }
+
+    function deriveCondition(temp, month){
+        const monsoon = month >=5 && month <=8; // Jun-Sep (0 index)
+        if(monsoon){
+            if(Math.random()<0.15) return 'Thunderstorms';
+            if(Math.random()<0.55) return 'Rain Showers';
+            return Math.random()<0.5 ? 'Cloudy' : 'Partly Cloudy';
+        }
+        if(temp >= 33) return 'Sunny';
+        if(temp >= 30) return 'Partly Cloudy';
+        if(temp >= 26) return 'Cloudy';
+        return Math.random()<0.4 ? 'Partly Cloudy' : 'Sunny';
+    }
+
+    function renderWeather(city){
+        const now = new Date();
+        const currentTemp = getRealisticTemperature(city, now);
+        const condition = deriveCondition(currentTemp, now.getMonth());
+        locationElement.textContent = city;
+        temperatureElement.textContent = `${currentTemp}°C`;
+        weatherElement.innerHTML = `${weatherConditions[condition]} <span class="ml-2">${condition}</span>`;
+        weatherElement.classList.add('flex','items-center');
+        forecastElement.innerHTML = '';
+        for (let i = 1; i <= 3; i++) {
+            const day = new Date(); day.setDate(day.getDate()+i); day.setHours(15);
+            const t = getRealisticTemperature(city, day);
+            const cond = deriveCondition(t, day.getMonth());
+            const dayName = day.toLocaleDateString('en-US', { weekday: 'short' });
+            const forecastItem = `\n            <div class="flex items-center justify-between text-sm">\n                <span class="text-gray-400">${dayName}</span>\n                ${weatherConditions[cond]}\n                <span class="font-medium text-white">${t}°C</span>\n            </div>\n        `;
+            forecastElement.insertAdjacentHTML('beforeend', forecastItem);
+        }
+    }
+
+    // Initial render (use stored city if exists, else random)
+    const storedCity = localStorage.getItem('selectedCity');
+    const initialCity = storedCity && indianCities.includes(storedCity) ? storedCity : indianCities[Math.floor(Math.random()*indianCities.length)];
+    renderWeather(initialCity);
 
     // Crop Health Logic
     const healthStatusText = document.getElementById('health-status-text');
@@ -195,14 +239,95 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch (e) { console.warn('Ticker build failed', e); }
         }
 
-        if (typeof d3 !== 'undefined') {
-            d3.csv('crops.csv').then(raw => {
-                if (raw && raw.length) {
-                    const data = raw.map(d => ({ Crop:d.Crop, Date:new Date(d.Date), Price:+d.Price }));
-                    processData(data);
+        // New: Try Excel first if loader present
+        const cityFilterWrap = document.getElementById('city-filter-wrap');
+        const cityFilter = document.getElementById('city-filter');
+
+        function populateCityFilter(cities, onChange){
+            if(!cities.length){ cityFilterWrap.classList.add('hidden'); return; }
+              const stored = localStorage.getItem('selectedCity') || '__ALL__';
+              cityFilter.innerHTML = '<option value="__ALL__">All Cities (avg)</option>' + cities.map(c=>`<option value="${c}">${c}</option>`).join('');
+            cityFilterWrap.classList.remove('hidden');
+              if([...cityFilter.options].some(o=>o.value===stored)) cityFilter.value = stored;
+            cityFilter.addEventListener('change', (e)=>{ 
+                localStorage.setItem('selectedCity', e.target.value); 
+                onChange(); 
+                // Update weather using a concrete city when not averaging
+                const cityForWeather = e.target.value === '__ALL__' ? (localStorage.getItem('selectedCityFallbackCity') || 'Delhi') : e.target.value;
+                if(cityForWeather && cityForWeather !== '__ALL__'){
+                    localStorage.setItem('selectedCityFallbackCity', cityForWeather);
+                    if(typeof renderWeather === 'function') renderWeather(cityForWeather);
+                }
+            });
+        }
+
+        async function tryExcel(){
+            if(!(window.ExcelDataLoader && typeof window.ExcelDataLoader.loadExcel === 'function')) throw new Error('Excel loader missing');
+            const { rows, cities } = await window.ExcelDataLoader.loadExcel();
+            if(!rows.length) throw new Error('No rows from Excel');
+            // Keep original rows for filtering
+            window._excelCropRows = rows;
+            populateCityFilter(cities, () => rebuildFromExcel(chart));
+            rebuildFromExcel(chart);
+        }
+
+        function rebuildFromExcel(chart){
+            const rows = window._excelCropRows || [];
+            if(!rows.length){ return; }
+            const cityFilter = document.getElementById('city-filter');
+            const chosen = cityFilter ? cityFilter.value : '__ALL__';
+            let filtered;
+            if(chosen && chosen !== '__ALL__') {
+                filtered = rows.filter(r => r.City === chosen);
+            } else if(chosen === '__ALL__') {
+                // Average across cities per Crop+Date
+                const map = new Map();
+                for(const r of rows){
+                    const key = r.Crop + '|' + r.Date.toISOString().slice(0,10);
+                    if(!map.has(key)) map.set(key, { Crop:r.Crop, Date:r.Date, sum:r.Price, count:1 });
+                    else { const m = map.get(key); m.sum += r.Price; m.count += 1; }
+                }
+                filtered = Array.from(map.values()).map(v => ({ Crop:v.Crop, Date:v.Date, Price: v.sum / v.count }));
+            } else { filtered = rows; }
+            // Normalize shape for processData
+            const data = filtered.map(r => ({ Crop:r.Crop, Date:new Date(r.Date), Price:+r.Price }));
+            processData(data);
+        }
+
+        try {
+            tryExcel().catch(excelErr => {
+                console.info('Excel load failed, falling back to CSV:', excelErr.message);
+                // Fallback to CSV
+                if (typeof d3 !== 'undefined') {
+                    d3.csv('crops.csv').then(raw => {
+                        if (raw && raw.length) {
+                            // Detect optional City column for filtering
+                            const hasCityCol = Object.keys(raw[0]).some(k => k.toLowerCase() === 'city');
+                            if (hasCityCol) {
+                                const mapped = raw.map(d => ({
+                                    Crop: d.Crop,
+                                    Date: new Date(d.Date),
+                                    Price: +d.Price,
+                                    City: d.City || d.city || null
+                                }));
+                                const cities = [...new Set(mapped.map(r => r.City).filter(Boolean))].sort();
+                                if (cities.length) {
+                                    window._excelCropRows = mapped; // reuse same storage & rebuild logic
+                                    populateCityFilter(cities, () => rebuildFromExcel(chart));
+                                    rebuildFromExcel(chart);
+                                } else {
+                                    const data = mapped.map(r => ({ Crop:r.Crop, Date:r.Date, Price:r.Price }));
+                                    processData(data);
+                                }
+                            } else {
+                                const data = raw.map(d => ({ Crop:d.Crop, Date:new Date(d.Date), Price:+d.Price }));
+                                processData(data);
+                            }
+                        } else { processData(fallbackData); }
+                    }).catch(err => { console.warn('CSV load failed, using fallback', err); processData(fallbackData); });
                 } else { processData(fallbackData); }
-            }).catch(err => { console.warn('CSV load failed, using fallback', err); processData(fallbackData); });
-        } else { processData(fallbackData); }
+            });
+        } catch(e){ processData(fallbackData); }
     }
 
     // Initialize chart after slight delay

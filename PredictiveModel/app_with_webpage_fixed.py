@@ -1,6 +1,5 @@
 import os
 import logging
-import pickle
 from pathlib import Path
 from datetime import datetime, timedelta
 
@@ -31,74 +30,34 @@ app = Flask(__name__)
 static_folder = Path(app.static_folder or "static")
 static_folder.mkdir(parents=True, exist_ok=True)
 
-# Load artifacts safely with fallback functionality
+# Load artifacts safely
 def safe_load_artifacts():
-    model = None
-    crop_name_to_code = {}
-    city_name_to_code = {}
-    combined_df = pd.DataFrame()
-    
-    # Try to load the machine learning model
     try:
         logger.info(f"Loading model from: {MODEL_PATH}")
-        # Try different approaches to handle pickle compatibility issues
-        try:
-            model = joblib.load(str(MODEL_PATH))
-            logger.info("Model loaded successfully with joblib.")
-        except (KeyError, ValueError, pickle.UnpicklingError) as e:
-            logger.warning(f"Joblib loading failed with {type(e).__name__}: {e}")
-            # Try alternative loading methods
-            with open(str(MODEL_PATH), 'rb') as f:
-                model = pickle.load(f)
-            logger.info("Model loaded successfully with pickle.")
+        model = joblib.load(str(MODEL_PATH))
+        logger.info("Model loaded successfully.")
     except Exception as e:
-        logger.error(f"Failed to load model: {e}")
-        logger.warning("Continuing without ML model - using fallback price estimation.")
-        model = None
+        logger.exception("Failed to load model. Check MODEL_PATH and file integrity.")
+        raise
 
-    # Try to load mappings
     try:
         crop_name_to_code = joblib.load(str(CROP_MAP_PATH))
         city_name_to_code = joblib.load(str(CITY_MAP_PATH))
         logger.info("Loaded crop/city mappings successfully.")
     except Exception as e:
-        logger.error(f"Failed to load mapping files: {e}")
-        # Create fallback mappings
-        crop_name_to_code = {
-            "Rice": 0, "Wheat": 1, "Bengal Gram": 2, 
-            "Jowar": 3, "Maize": 4
-        }
-        city_name_to_code = {
-            "Mumbai": 0, "Nagpur": 1, "Nashik": 2, 
-            "Pune": 3, "Raigad": 4, "Thane": 5
-        }
-        logger.warning("Using fallback crop and city mappings.")
+        logger.exception("Failed to load mapping files.")
+        raise
 
-    # Try to load combined dataset
     try:
         combined_df = pd.read_excel(str(COMBINED_DF_PATH))
         combined_df["Date"] = pd.to_datetime(combined_df["Date"])
         logger.info("Loaded combined dataset successfully.")
     except Exception as e:
-        logger.error(f"Failed to load combined dataset: {e}")
-        # Create a minimal fallback dataset
-        logger.warning("Using minimal fallback dataset.")
-        dates = pd.date_range(start='2020-01-01', end='2024-12-31', freq='M')
-        fallback_data = []
-        for crop in crop_name_to_code.keys():
-            for city in city_name_to_code.keys():
-                for date in dates:
-                    # Generate realistic price ranges for different crops
-                    base_prices = {"Rice": 2500, "Wheat": 2200, "Bengal Gram": 5500, "Jowar": 2800, "Maize": 2000}
-                    base_price = base_prices.get(crop, 2500)
-                    price = base_price + (hash(f"{crop}{city}{date}") % 1000)  # Add some variation
-                    fallback_data.append({"Date": date, "Crop": crop, "City": city, "Price": price})
-        
-        combined_df = pd.DataFrame(fallback_data)
+        logger.exception("Failed to load combined dataset (Excel).")
+        raise
 
     return model, crop_name_to_code, city_name_to_code, combined_df
 
-# Load artifacts with error handling
 model, crop_name_to_code, city_name_to_code, combined_df = safe_load_artifacts()
 
 # Define the season function
@@ -244,17 +203,6 @@ def predict_crop_price(crop_name, city_name, prediction_date, planting_date):
 
     most_recent_price = float(df_hist.sort_values("Date")["Price"].iloc[-1])
 
-    # If model is not available, use a simple fallback prediction
-    if model is None:
-        logger.warning("Model not available, using fallback prediction method.")
-        # Simple fallback: use historical average with some seasonal adjustment
-        seasonal_multiplier = {1: 1.1, 2: 0.95, 3: 1.05}  # monsoon, winter, summer
-        season = get_season(prediction_date.month)
-        avg_price = df_hist["Price"].mean()
-        predicted_price = avg_price * seasonal_multiplier.get(season, 1.0)
-        return float(predicted_price), most_recent_price, None
-
-    # Use ML model if available
     new_data = pd.DataFrame([{
         "Year": prediction_date.year,
         "Month": prediction_date.month,
@@ -274,13 +222,8 @@ def predict_crop_price(crop_name, city_name, prediction_date, planting_date):
         pred = model.predict(new_data)
         predicted_price = float(pred[0])
     except Exception as e:
-        logger.exception("Model prediction failed, using fallback method.")
-        # Fallback to simple prediction if model fails
-        seasonal_multiplier = {1: 1.1, 2: 0.95, 3: 1.05}
-        season = get_season(prediction_date.month)
-        avg_price = df_hist["Price"].mean()
-        predicted_price = avg_price * seasonal_multiplier.get(season, 1.0)
-        return float(predicted_price), most_recent_price, None
+        logger.exception("Model prediction failed.")
+        return None, None, "Model prediction error: verify model and feature alignment."
 
     return predicted_price, most_recent_price, None
 

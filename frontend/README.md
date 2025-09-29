@@ -54,6 +54,62 @@ Wheat,2024-01-15,21.50
 
 If CSV fails to load, `main.js` supplies a fallback dataset covering all known crops so the chart always renders.
 
+## Using the Excel Source (New)
+If you now maintain prices in the workbook `combined_crop_data_citywise.xlsx`, convert it into the required `crops.csv` format before (re)loading the site.
+
+1. Ensure Python dependencies are installed (from repo root):
+	```powershell
+	pip install -r backend/requirements.txt
+	```
+2. Place / update the Excel file at: `frontend/combined_crop_data_citywise.xlsx`.
+3. Run the conversion script (from `backend/` or repo root):
+	```powershell
+	python backend/convert_excel_to_csv.py
+	```
+4. The script will generate / overwrite `frontend/crops.csv` with columns:
+	```
+	Crop,Date,Price
+	```
+	- Date normalized to ISO (YYYY-MM-DD)
+	- If multiple city columns exist, their numeric values are averaged into a single Price per Crop+Date.
+5. Refresh the browser (hard refresh Ctrl+F5) to see updated charts & price cards.
+
+Script logic overview:
+- Auto-detects crop & date columns from several common header variants.
+- Detects multiple numeric city price columns and averages them; if only one price-like column exists, uses it directly.
+- Aggregates duplicate (Crop,Date) rows by mean.
+
+If your sheet uses different header names, adjust lists in `backend/convert_excel_to_csv.py`:
+```python
+CROP_COL_CANDIDATES = ["Crop", "crop", "Crop Name"]
+DATE_COL_CANDIDATES = ["Date", "Month"]
+```
+
+## Quick Regeneration Shortcut
+Add a simple PowerShell alias in your profile for repeated use:
+```powershell
+function regen-crops { python "$PWD/backend/convert_excel_to_csv.py" }
+```
+Then run `regen-crops` anytime you update the workbook.
+
+## City Filtering (Chart & Price Cards)
+If the data originates from the Excel file with multiple city columns OR the CSV contains a `City` column, a city dropdown appears:
+
+- Selecting a specific city displays only that city's prices.
+- Selecting “All Cities (avg)” computes the mean price across all cities per crop per date.
+- If no city data is present, the selector is hidden.
+
+To enable via CSV directly, include a `City` column:
+```
+Crop,Date,Price,City
+Wheat,2024-01-15,21.5,Delhi
+Wheat,2024-01-15,22.1,Mumbai
+```
+The app will treat each row separately and let the user choose a city or average.
+
+### Persistence
+The last selected city is saved in `localStorage` (key: `selectedCity`) and automatically restored on both the dashboard and price pages.
+
 ## Extending
 - Add another crop: append rows to `crops.csv` matching existing date cadence.
 - Add a new page: create `page.html` + `page.js`, link `global.css` and required CDNs.
