@@ -4,7 +4,7 @@ import os
 
 IMG_SIZE = (224, 224)
 
-MODEL_PATH = 'D:\\Work\\Github\\rewindrecode\\Recode_Rewind_Bot_Coders\\Recode_Rewind_Bot_Coders\\crop_disease_model_10e.keras'
+MODEL_PATH = 'D:\\Work\\Github\\rewindrecode\\Recode_Rewind_Bot_Coders\\Recode_Rewind_Bot_Coders\\crop_disease_model_100e.keras'
 
 DATA_DIR ='D:\\Work\\Github\\rewindrecode\\Recode_Rewind_Bot_Coders\\Recode_Rewind_Bot_Coders\\backend\\dataset' 
 UPLOAD_DIR = 'D:\\Work\\Github\\rewindrecode\\Recode_Rewind_Bot_Coders\\Recode_Rewind_Bot_Coders\\backend\\uploads' 
@@ -37,9 +37,8 @@ def predict_image(image_path):
     img = tf.keras.utils.load_img(image_path, target_size=IMG_SIZE)    
     img_array = tf.keras.utils.img_to_array(img)
     img_batch = np.expand_dims(img_array, axis=0)
-    img_preprocessed = tf.keras.applications.mobilenet_v2.preprocess_input(img_batch)
-    
-    prediction = model.predict(img_preprocessed, verbose=0)
+
+    prediction = model.predict(img_batch, verbose=0)
     
     predicted_class_index = np.argmax(prediction[0])
     confidence = np.max(prediction[0]) * 100

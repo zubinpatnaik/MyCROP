@@ -25,7 +25,7 @@ model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.001),
               loss=tf.keras.losses.SparseCategoricalCrossentropy(),
               metrics=['accuracy'])
 
-initial_epochs = 10
+initial_epochs = 100
 history = model.fit(train_dataset,
                     epochs=initial_epochs,
                     validation_data=validation_dataset)
@@ -33,4 +33,4 @@ history = model.fit(train_dataset,
 loss, accuracy = model.evaluate(validation_dataset)
 print(f"Final val acc: {accuracy}")
 
-model.save('crop_disease_model_10e.keras')
+model.save('crop_disease_model_100e.keras')
