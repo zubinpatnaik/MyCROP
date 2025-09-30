@@ -19,3 +19,7 @@ body {
 
 /* Utility overrides */
 .chart-container { position: relative; }
+
+/* Satellite widget tweaks */
+#satellite-base, #satellite-overlay { image-rendering: auto; }
+#satellite-overlay { transition: opacity 0.25s ease; }

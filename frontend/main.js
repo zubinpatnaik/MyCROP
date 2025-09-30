@@ -215,6 +215,7 @@ document.addEventListener('DOMContentLoaded', () => {
             chart.update();
             headerSubtitle.textContent = 'CROP PRICE TRENDS (₹ per Quintal)';
             buildTicker(cropsMap);
+            try { updateQuickAnalysis(dataSorted); } catch(e){ console.warn('Quick analysis failed', e); }
         }
 
         function buildTicker(cropsMap) {
@@ -332,4 +333,262 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Initialize chart after slight delay
     setTimeout(initChart, 50);
+
+        // ================= Quick Market Analysis Logic =================
+        function updateQuickAnalysis(rows){
+                const card = document.getElementById('quick-analysis-card');
+                const grid = document.getElementById('qa-metrics');
+                const updated = document.getElementById('qa-updated');
+                if(!card || !grid || !rows || !rows.length) return;
+                // Group by crop, track last 2 prices
+                const byCrop = new Map();
+                rows.forEach(r => {
+                        const key = r.Crop;
+                        if(!byCrop.has(key)) byCrop.set(key, []);
+                        byCrop.get(key).push(r);
+                });
+                let summaries = [];
+                byCrop.forEach((arr, crop) => {
+                        const sorted = arr.slice().sort((a,b)=>a.Date-b.Date);
+                        const last = sorted[sorted.length-1];
+                        const prev = sorted[sorted.length-2];
+                        const change = prev ? (last.Price - prev.Price) : 0;
+                        const pct = prev && prev.Price ? (change/prev.Price)*100 : 0;
+                        const avg = sorted.reduce((s,x)=>s+x.Price,0)/sorted.length;
+                        summaries.push({ crop, last:last.Price, change, pct, avg });
+                });
+                if(!summaries.length){ grid.innerHTML = '<div class="col-span-2 text-gray-400">No data</div>'; return; }
+                const topGainer = summaries.reduce((a,b)=> b.pct > a.pct ? b : a, summaries[0]);
+                const topLoser = summaries.reduce((a,b)=> b.pct < a.pct ? b : a, summaries[0]);
+                const highestPrice = summaries.reduce((a,b)=> b.last > a.last ? b : a, summaries[0]);
+                const overallAvg = summaries.reduce((s,x)=> s + x.last, 0)/summaries.length;
+                const formatPct = v => `${v>=0?'+':''}${v.toFixed(1)}%`;
+                grid.innerHTML = `
+                        <div>
+                            <p class="text-gray-400 mb-0.5">Top Gainer</p>
+                            <p class="font-semibold text-green-400 text-sm">${topGainer.crop} <span class="text-xs">${formatPct(topGainer.pct)}</span></p>
+                        </div>
+                        <div>
+                            <p class="text-gray-400 mb-0.5">Top Loser</p>
+                            <p class="font-semibold text-red-400 text-sm">${topLoser.crop} <span class="text-xs">${formatPct(topLoser.pct)}</span></p>
+                        </div>
+                        <div>
+                            <p class="text-gray-400 mb-0.5">Highest Price</p>
+                            <p class="font-semibold text-white text-sm">${highestPrice.crop} <span class="text-xs text-gray-400">₹${highestPrice.last.toFixed(2)}</span></p>
+                        </div>
+                        <div>
+                            <p class="text-gray-400 mb-0.5">Overall Avg</p>
+                            <p class="font-semibold text-white text-sm">₹${overallAvg.toFixed(2)}</p>
+                        </div>
+                `;
+                if(updated) updated.textContent = new Date().toLocaleTimeString();
+        }
+    
+    // ================= Satellite Field Health Widget (re-added) =================
+    const satUpload = document.getElementById('satellite-upload');
+    const satBaseCanvas = document.getElementById('satellite-base');
+    const satOverlayCanvas = document.getElementById('satellite-overlay');
+    const satLoading = document.getElementById('satellite-loading');
+    const satToggleBtn = document.getElementById('toggle-overlay');
+    const satStats = document.getElementById('satellite-stats');
+    
+    if (satUpload && satBaseCanvas && satOverlayCanvas) {
+        const baseCtx = satBaseCanvas.getContext('2d');
+        const overlayCtx = satOverlayCanvas.getContext('2d');
+        let overlayVisible = true;
+        const DEFAULT_SATELLITE_IMAGE = 'Screenshot 2025-09-30 110916.png'; // adjust name if needed
+    const SATELLITE_OVERLAY_ENABLED = true; // overlay enabled by default; user can toggle visibility
+        let userLoaded = false;
+
+        function classifyValue(v){
+            if (v < 0.05) return 0;      // red
+            if (v < 0.25) return 1;      // yellow
+            return 2;                    // green
+        }
+        function colorForClass(c){
+            switch(c){
+                case 0: return [220,38,38,180];
+                case 1: return [234,179,8,170];
+                default: return [34,197,94,170];
+            }
+        }
+        function computeIndexAndRender(img){
+            const maxWidth = 600;
+            const scale = img.width > maxWidth ? maxWidth / img.width : 1;
+            const w = Math.floor(img.width * scale);
+            const h = Math.floor(img.height * scale);
+            satBaseCanvas.width = w; satBaseCanvas.height = h;
+            satOverlayCanvas.width = w; satOverlayCanvas.height = h;
+            baseCtx.drawImage(img, 0, 0, w, h);
+            if(!SATELLITE_OVERLAY_ENABLED){
+                // If you ever flip flag to false, still show base image but keep button disabled
+                satOverlayCanvas.style.display = 'none';
+                if(satStats) satStats.textContent = 'Overlay disabled';
+                if(satToggleBtn){ satToggleBtn.disabled = true; satToggleBtn.textContent = 'Overlay: Off'; }
+                return;
+            }
+            const imageData = baseCtx.getImageData(0,0,w,h);
+            const { data } = imageData;
+            const overlayImage = overlayCtx.createImageData(w,h);
+            let counts = [0,0,0];
+            const stride = (w*h > 400000) ? 2 : 1;
+            for (let y=0; y<h; y+=stride){
+                for (let x=0; x<w; x+=stride){
+                    const i = (y*w + x)*4;
+                    const r = data[i];
+                    const g = data[i+1];
+                    const v = (g - r) / (g + r + 1e-6);
+                    const cls = classifyValue(v);
+                    counts[cls]++;
+                    const [cr,cg,cb,ca] = colorForClass(cls);
+                    overlayImage.data[i] = cr; overlayImage.data[i+1] = cg; overlayImage.data[i+2] = cb; overlayImage.data[i+3] = ca;
+                }
+            }
+            overlayCtx.putImageData(overlayImage,0,0);
+            const total = counts.reduce((a,b)=>a+b,0) || 1;
+            const pct = counts.map(c=> (100*c/total).toFixed(1));
+            if(satStats) satStats.textContent = `Healthy ${pct[2]}% | Moderate ${pct[1]}% | Poor ${pct[0]}%`;
+            if(satToggleBtn){ satToggleBtn.disabled = false; satToggleBtn.textContent = 'Overlay: On'; }
+        }
+        function loadSatelliteFile(file){
+            const url = URL.createObjectURL(file);
+            const img = new Image();
+            if(satLoading) satLoading.classList.remove('hidden');
+            img.onload = () => { try { computeIndexAndRender(img); } finally { URL.revokeObjectURL(url); if(satLoading) satLoading.classList.add('hidden'); } };
+            img.onerror = () => { if(satLoading) satLoading.classList.add('hidden'); };
+            img.src = url;
+        }
+        satUpload.addEventListener('change', (e)=>{
+            const file = e.target.files && e.target.files[0];
+            if(file){ userLoaded = true; loadSatelliteFile(file); }
+        });
+        if(satToggleBtn){
+            satToggleBtn.addEventListener('click', ()=>{
+                overlayVisible = !overlayVisible;
+                satOverlayCanvas.style.display = overlayVisible ? 'block' : 'none';
+                satToggleBtn.textContent = `Overlay: ${overlayVisible ? 'On' : 'Off'}`;
+            });
+        }
+        // Auto-load default image if available
+        setTimeout(()=>{
+            if(!userLoaded && DEFAULT_SATELLITE_IMAGE){
+                fetch(DEFAULT_SATELLITE_IMAGE, { method: 'HEAD' })
+                    .then(r => { if(r.ok){ const img = new Image(); if(satLoading) satLoading.classList.remove('hidden'); img.onload=()=>{ computeIndexAndRender(img); if(satLoading) satLoading.classList.add('hidden'); }; img.onerror=()=>{ if(satLoading) satLoading.classList.add('hidden'); }; img.src = DEFAULT_SATELLITE_IMAGE; }} )
+                    .catch(()=>{});
+            }
+        }, 300);
+    }
+
+    // ================= Crop Image Diagnosis (disease prediction) =================
+    const diagUpload = document.getElementById('diagnosis-upload');
+    const diagPreview = document.getElementById('diagnosis-preview');
+    const diagPlaceholder = document.getElementById('diagnosis-placeholder');
+    const diagLoading = document.getElementById('diagnosis-loading');
+    const diagResult = document.getElementById('diagnosis-result');
+    const diagHealthWrap = document.getElementById('diagnosis-health');
+    const diagHealthText = document.getElementById('diagnosis-health-text');
+    const diagHealthBar = document.getElementById('diagnosis-health-bar');
+    const diagReset = document.getElementById('diagnosis-reset');
+
+    // Determine API base:
+    // Priority: window.CROP_API_BASE (manual override) > file:// fallback to localhost:5001 > localhost hostnames > relative (same origin deploy)
+    const API_BASE = (function(){
+        try {
+            if (window.CROP_API_BASE) return window.CROP_API_BASE.replace(/\/$/, '');
+            if (location.protocol === 'file:') return 'http://localhost:5001';
+            if (['localhost','127.0.0.1'].includes(location.hostname)) return 'http://localhost:5001';
+            return ''; // deployed: assume reverse proxy / same origin
+        } catch { return 'http://localhost:5001'; }
+    })();
+    console.log('[Diagnosis] Using API_BASE =', API_BASE || '(relative)');
+
+    function resetDiagnosis(){
+        if(diagPreview){ diagPreview.src=''; diagPreview.classList.add('hidden'); }
+        if(diagPlaceholder) diagPlaceholder.classList.remove('hidden');
+        if(diagResult) diagResult.innerHTML = '<p class="text-[11px]">Prediction result will appear here.</p>';
+        if(diagHealthWrap){ diagHealthWrap.classList.add('hidden'); }
+        if(diagHealthBar){ diagHealthBar.style.width = '0'; diagHealthBar.className = 'h-2 w-0 bg-green-400 transition-all duration-700'; }
+        if(diagHealthText) diagHealthText.textContent = '--';
+        if(diagReset) diagReset.disabled = true;
+        if(diagUpload) diagUpload.value = '';
+    }
+    if(diagReset){ diagReset.addEventListener('click', ()=> resetDiagnosis()); }
+    resetDiagnosis();
+
+    function classifyHealthColor(score){
+        if(score >= 80) return 'bg-green-500';
+        if(score >= 60) return 'bg-green-400';
+        if(score >= 40) return 'bg-yellow-400';
+        if(score >= 20) return 'bg-orange-400';
+        return 'bg-red-500';
+    }
+
+    async function runDiagnosis(file){
+        if(!file || !diagResult) return;
+        if(diagLoading) diagLoading.classList.remove('hidden');
+        diagResult.innerHTML = '<p class="text-[11px] text-gray-400">Uploading & analyzing...</p>';
+        try {
+            const formData = new FormData();
+            formData.append('file', file, file.name);
+            const endpoint = `${API_BASE}/predict`;
+            let resp;
+            try {
+                resp = await fetch(endpoint, { method:'POST', body: formData });
+            } catch(networkErr){
+                throw new Error('Failed to contact backend. Make sure the API is running on '+API_BASE+' (python backend/api.py)');
+            }
+            if(!resp.ok){
+                // Differentiate 404 vs others
+                if(resp.status === 404){
+                    throw new Error('Endpoint /predict not found (did the server start with the new api.py?)');
+                }
+                throw new Error(`Server error ${resp.status}`);
+            }
+            const data = await resp.json();
+            if(data.error) throw new Error(data.error);
+            const { prediction, confidence, health_score } = data;
+            const confPct = (confidence*100).toFixed(2);
+            diagResult.innerHTML = `
+                <p class="mb-1"><span class="text-gray-400">Predicted Disease:</span> <span class="font-semibold text-white">${prediction || 'Unknown'}</span></p>
+                <p class="mb-1"><span class="text-gray-400">Model Confidence:</span> <span class="font-semibold text-white">${confPct}%</span></p>
+                <p class="text-[10px] text-gray-500">Confidence is model's softmax probability. Health score is placeholder.</p>
+            `;
+            if(typeof health_score === 'number' && diagHealthWrap && diagHealthBar && diagHealthText){
+                const hs = Math.max(0, Math.min(100, health_score));
+                diagHealthWrap.classList.remove('hidden');
+                diagHealthText.textContent = `${hs.toFixed(1)}%`;
+                diagHealthBar.style.width = `${hs}%`;
+                diagHealthBar.className = `h-2 rounded-full transition-all duration-700 ${classifyHealthColor(hs)}`;
+            }
+            if(diagReset) diagReset.disabled = false;
+        } catch(err){
+            console.error('[Diagnosis] Prediction failed:', err);
+            const hints = `
+                <ul class='mt-1 list-disc list-inside text-[10px] text-gray-500 space-y-0.5'>
+                  <li>Start backend: python backend/api.py</li>
+                  <li>If opened via file://, we assume http://localhost:5001</li>
+                  <li>Override manually: window.CROP_API_BASE = 'http://localhost:5001'</li>
+                  <li>Check /health in browser: ${API_BASE}/health</li>
+                </ul>`;
+            diagResult.innerHTML = `<p class="text-red-400 text-[11px]">Error: ${err.message}</p>${hints}`;
+        } finally {
+            if(diagLoading) diagLoading.classList.add('hidden');
+        }
+    }
+
+    if(diagUpload){
+        diagUpload.addEventListener('change', (e)=>{
+            const file = e.target.files && e.target.files[0];
+            if(!file) return;
+            // preview
+            const url = URL.createObjectURL(file);
+            if(diagPreview){
+                diagPreview.src = url;
+                diagPreview.onload = () => { URL.revokeObjectURL(url); };
+                diagPreview.classList.remove('hidden');
+            }
+            if(diagPlaceholder) diagPlaceholder.classList.add('hidden');
+            runDiagnosis(file);
+        });
+    }
 });

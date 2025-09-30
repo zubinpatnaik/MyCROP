@@ -84,11 +84,49 @@
                             </div>
                         </div>
                     </div>
-                    <!-- Optional File Upload -->
-                    <div class="bg-gray-800/50 p-6 rounded-2xl border border-white/10">
-                        <h3 class="text-lg font-bold text-white mb-4">Upload Field Image</h3>
-                        <input id="file-upload" type="file" accept="image/*" class="block w-full text-sm text-gray-300 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-green-500/20 file:text-green-300 hover:file:bg-green-500/30 cursor-pointer" />
-                        <p class="text-xs text-gray-400 mt-2">(This demo just logs the filename)</p>
+                    <!-- Quick Market Analysis (replaces old upload card) -->
+                    <div class="bg-gray-800/50 p-6 rounded-2xl border border-white/10 hover:border-green-500/30 transition" id="quick-analysis-card">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-lg font-bold text-white">Quick Market Analysis</h3>
+                            <span id="qa-updated" class="text-[10px] text-gray-500">--</span>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4 text-xs" id="qa-metrics">
+                            <div class="col-span-2 text-gray-400">Awaiting data...</div>
+                        </div>
+                        <p class="text-[10px] text-gray-500 mt-4">Auto-computed from latest available prices (per selected city or overall average).</p>
+                    </div>
+
+                    <!-- Crop Image Diagnosis (disease prediction quick analysis) -->
+                    <div id="diagnosis-card" class="bg-gray-800/50 p-6 rounded-2xl border border-white/10 hover:border-green-500/30 transition">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-lg font-bold text-white">Crop Image Diagnosis</h3>
+                            <button id="diagnosis-reset" class="text-[10px] px-2 py-1 rounded bg-gray-700/60 hover:bg-gray-700 text-gray-300" disabled>Reset</button>
+                        </div>
+                        <div class="space-y-3">
+                            <div>
+                                <label for="diagnosis-upload" class="block text-xs uppercase tracking-wide text-gray-400 mb-1">Upload Crop Leaf / Plant Image</label>
+                                <input id="diagnosis-upload" type="file" accept="image/*" class="block w-full text-sm text-gray-300 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-green-500/20 file:text-green-300 hover:file:bg-green-500/30 cursor-pointer" />
+                                <p class="text-[10px] text-gray-500 mt-1">Runs on local TensorFlow model (224x224 MobileNetV2). Only one image at a time.</p>
+                            </div>
+                            <div class="relative flex items-center justify-center border border-white/10 rounded-lg overflow-hidden bg-gray-900/40 min-h-[140px]">
+                                <img id="diagnosis-preview" alt="Preview" class="max-h-40 object-contain hidden" />
+                                <div id="diagnosis-placeholder" class="text-[11px] text-gray-500 p-4 text-center">No image selected yet.</div>
+                                <div id="diagnosis-loading" class="hidden absolute inset-0 flex items-center justify-center bg-gray-900/70 text-xs text-gray-300">Analyzing...</div>
+                            </div>
+                            <div id="diagnosis-result" class="text-xs text-gray-400">
+                                <p class="text-[11px]">Prediction result will appear here.</p>
+                            </div>
+                            <div id="diagnosis-health" class="hidden">
+                                <div class="flex items-center justify-between mb-1 text-[11px]">
+                                    <span class="text-gray-400">Estimated Health Score</span>
+                                    <span id="diagnosis-health-text" class="font-semibold text-white">--</span>
+                                </div>
+                                <div class="w-full h-2 bg-gray-700 rounded-full overflow-hidden">
+                                    <div id="diagnosis-health-bar" class="h-2 w-0 bg-green-400 transition-all duration-700"></div>
+                                </div>
+                            </div>
+                            <p class="text-[10px] text-gray-500">Health score is inverse of model confidence (placeholder). Higher score ≈ healthier / less certain disease. Refine later with true severity mapping.</p>
+                        </div>
                     </div>
                 </div>
 
@@ -105,6 +143,33 @@
                         </div>
                         <div class="space-y-2" id="forecast">
                             <!-- forecast items injected -->
+                        </div>
+                    </div>
+                    <!-- Satellite Field Health Analysis Widget -->
+                    <div class="bg-gray-800/50 p-6 rounded-2xl border border-white/10 hover:border-green-500/40 transition">
+                        <div class="flex items-start justify-between mb-4">
+                            <h3 class="text-lg font-bold text-white">Satellite Field Health</h3>
+                            <button id="toggle-overlay" class="text-xs px-2 py-1 rounded bg-green-600/30 text-green-300 hover:bg-green-600/40 transition" disabled>Overlay: Off</button>
+                        </div>
+                        <div class="space-y-3">
+                            <div>
+                                <label class="block text-xs uppercase tracking-wide text-gray-400 mb-1">Upload NDVI / RGB Image</label>
+                                <input id="satellite-upload" type="file" accept="image/*" class="block w-full text-sm text-gray-300 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-green-500/20 file:text-green-300 hover:file:bg-green-500/30 cursor-pointer" />
+                                <p class="text-[10px] text-gray-500 mt-1">If no file chosen, default demo image loads automatically.</p>
+                            </div>
+                            <div class="relative group border border-white/10 rounded-lg overflow-hidden">
+                                <canvas id="satellite-base" class="w-full max-h-64 object-contain bg-black/30"></canvas>
+                                <canvas id="satellite-overlay" class="absolute inset-0 w-full h-full pointer-events-none mix-blend-screen opacity-80"></canvas>
+                                <div id="satellite-loading" class="hidden absolute inset-0 flex items-center justify-center bg-gray-900/70 text-xs text-gray-300">Processing...</div>
+                            </div>
+                            <div class="flex items-center justify-between mt-1">
+                                <div class="flex items-center space-x-2 text-[10px]">
+                                    <span class="inline-flex items-center"><span class="w-3 h-3 rounded-sm bg-red-600 mr-1"></span>Poor</span>
+                                    <span class="inline-flex items-center"><span class="w-3 h-3 rounded-sm bg-yellow-400 mr-1"></span>Moderate</span>
+                                    <span class="inline-flex items-center"><span class="w-3 h-3 rounded-sm bg-green-500 mr-1"></span>Healthy</span>
+                                </div>
+                                <span id="satellite-stats" class="text-[10px] text-gray-400">--</span>
+                            </div>
                         </div>
                     </div>
                 </div>
