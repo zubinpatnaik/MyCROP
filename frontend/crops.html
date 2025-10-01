@@ -43,6 +43,28 @@
                         <select id="city-filter" class="bg-gray-800/70 border border-white/10 text-xs rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-green-400 text-gray-200"></select>
                     </div>
                 </div>
+                <!-- Prediction Form -->
+                <div class="bg-gray-800/50 p-6 rounded-2xl border border-white/10 mb-8">
+                    <h3 class="text-lg font-semibold text-white mb-4">Predict Future Crop Price</h3>
+                    <form id="price-predict-form" class="grid gap-4 md:grid-cols-5 items-end">
+                        <div>
+                            <label class="block text-xs uppercase tracking-wide text-gray-400 mb-1">Crop Name</label>
+                            <input id="predict-crop" type="text" placeholder="e.g. Rice" class="w-full bg-gray-900/60 border border-white/10 rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-green-400" required />
+                        </div>
+                        <div>
+                            <label class="block text-xs uppercase tracking-wide text-gray-400 mb-1">City</label>
+                            <input id="predict-city" type="text" placeholder="e.g. Mumbai" class="w-full bg-gray-900/60 border border-white/10 rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-green-400" required />
+                        </div>
+                        <div>
+                            <label class="block text-xs uppercase tracking-wide text-gray-400 mb-1">Prediction Date</label>
+                            <input id="predict-date" type="date" class="w-full bg-gray-900/60 border border-white/10 rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-green-400" required />
+                        </div>
+                        <div class="md:col-span-1">
+                            <button type="submit" class="w-full bg-green-600 hover:bg-green-500 transition text-white font-medium rounded px-4 py-2 text-sm">Predict</button>
+                        </div>
+                        <div class="md:col-span-5" id="predict-result"></div>
+                    </form>
+                </div>
                 <div id="prices-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                     <!-- Prices will be dynamically inserted here -->
                     <p class="text-gray-400">Loading prices...</p>
@@ -56,5 +78,38 @@
     </footer>
 
     <script src="crops.js"></script>
+    <script>
+    (function(){
+        const form = document.getElementById('price-predict-form');
+        if(!form) return;
+        const resultEl = document.getElementById('predict-result');
+        form.addEventListener('submit', async (e)=>{
+            e.preventDefault();
+            resultEl.innerHTML = '<p class="text-xs text-gray-400">Predicting...</p>';
+                const crop = document.getElementById('predict-crop').value.trim();
+                const city = document.getElementById('predict-city').value.trim();
+                const date = document.getElementById('predict-date').value;
+                if(!crop || !date || !city){
+                    resultEl.innerHTML = '<p class="text-xs text-red-400">Please provide crop, city and date.</p>';
+                return;
+            }
+            try {
+                const resp = await fetch('http://localhost:5001/api/price/predict', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ crop_name: crop, city_name: city, prediction_date: date })
+                });
+                const data = await resp.json();
+                if(!resp.ok){
+                    resultEl.innerHTML = '<p class="text-xs text-red-400">Error: '+ (data.error || 'Unknown') +'</p>';
+                } else {
+                        resultEl.innerHTML = `<div class="text-xs text-green-300">Predicted Price for <span class="font-semibold">${data.crop_name}</span> in <span class="font-semibold">${data.city_name}</span> on <span class="font-mono">${data.prediction_date}</span>: <span class="font-semibold">₹${data.predicted_price.toFixed(2)}</span></div>`;
+                }
+            } catch(err){
+                resultEl.innerHTML = '<p class="text-xs text-red-400">Network error: '+ err.message +'</p>';
+            }
+        });
+    })();
+    </script>
 </body>
 </html>
